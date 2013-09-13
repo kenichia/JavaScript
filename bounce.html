@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="jquery-1.10.1.js"></script>
+
+        <script>
+                    
+        $(document).ready(function() {
+            var MAX_BALL_NUMBER = 20;
+            var MAX_BALL_SIZE = 20;
+            var FRAME_INTERVAL = 15;
+            
+
+            var mainCanvas = $("#main_canvas")[0];
+            var ctx = mainCanvas.getContext("2d");
+            var mgr = new ballManager();
+            
+            // initialization
+            for (var i = 0; i < MAX_BALL_NUMBER; i++)
+            {
+                obj = new ballObject(i,
+                                     Math.random()*ctx.canvas.width*0.8+MAX_BALL_SIZE,
+                                     Math.random()*ctx.canvas.height*0.8+MAX_BALL_SIZE,
+                                     Math.random()*4 - 4.0,
+                                     Math.random()*4 - 4.0,
+                                     Math.random()*(MAX_BALL_SIZE-10) + 10,
+                                     Math.floor(Math.random() * 0xFFFFFF).toString(16));
+                mgr.addBall(obj);
+            }
+                        
+            var onTimer = function() {
+                
+                mgr.updateAll(ctx);
+                
+                setTimeout( onTimer, FRAME_INTERVAL);
+            }
+            onTimer();
+        });
+        
+        
+        var ballObject = function(index, posX, posY, moveX, moveY, size, color) {
+            var _posX = posX;
+            var _posY = posY;
+            var _moveX = moveX;
+            var _moveY = moveY;
+            var _size = size;
+            var _clashed = false;
+//            var    _size : size,
+//            var    _color : color,
+            
+            var that = {
+                getX: function() { return _posX; },
+                
+                getY: function() { return _posY; },
+                
+                getR: function() { return _size; },
+                
+                isClashed: function() { return _clashed; },
+                
+                move: function() {
+                    _posX += _moveX;
+                    _posY += _moveY;
+                    
+                    if ((_posX - size) < 0 || (_posX + size) > 800)
+                        _moveX *= -0.99;
+                    if ((_posY - size) < 0 || (_posY + size) > 800)
+                        _moveY *= -0.99;
+                    
+                    _clashed = false;
+                },
+                
+                draw: function(ctx) {
+                    ctx.beginPath();
+                    ctx.arc(_posX, _posY, size, 0, 2 * Math.PI, true);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = "0000ff";
+                    ctx.stroke();
+//                    console.log("ball " + index);
+                },
+                
+                clash: function(distance) {
+                    _moveX *= -1.02;
+                    _moveY *= -1.02;
+                    _posX += _moveX * distance / 2;
+                    _posY += _moveY * distance / 2;
+                    _clashed = true;
+                },
+                
+                hitTest: function(ballObj) {
+                    var diffX = _posX - ballObj.getX();
+                    var diffY = _posY - ballObj.getY();
+                    var diffR = _size + ballObj.getR();
+                    var distance = (diffR * diffR) - (diffX * diffX + diffY * diffY);
+
+                    if (distance > 0)
+                    {
+                        distance = Math.sqrt(distance);
+                        _moveX *= -1.02;
+                        _moveY *= -1.02;
+                        _posX += _moveX * distance / 2;
+                        _posY += _moveY * distance / 2;
+                        _clashed = true;
+                        
+                        ballObj.clash(distance);
+                    }
+
+                }
+                    
+            };
+            return that;
+        };
+            
+        var ballManager = function()
+        {
+            var _array = [];
+            var that = {
+                addBall : function(ball) {
+                    _array.push(ball);
+                },
+                updateAll : function(context) {
+                    for (var i=0; i < _array.length; i++) {
+                        _array[i].move();
+                    }
+                    
+                    for (var i=0; i < _array.length; i++) {
+                        
+                        for (var j=i+1; j < _array.length; j++) {
+                            _array[i].hitTest(_array[j]);
+                        }
+                    }
+                    
+                    
+                    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+                    
+                    for (var i=0; i < _array.length; i++) {
+                        _array[i].draw(context);
+                    }
+                    context.strokeStyle = "a0a0a0";
+                    for (var i=0; i < _array.length - 1; i++) {
+//                        console.log(_array[i].getX());
+                        var ball1 = _array[i];
+                        var ball2 = _array[i+1];
+                        var diffX = ball1.getX() - ball2.getX();
+                        var diffY = ball1.getY() - ball2.getY();
+                        var diffR = ball1.getR() + ball2.getR();
+                        var distance = Math.sqrt((diffX * diffX + diffY * diffY) - (diffR * diffR)) / 100;
+//                        console.log(distance);
+                        if (distance < 0)
+                            distance = 0;
+                        if (distance > 6)
+                            distance = 6;
+
+                        context.beginPath();
+                        context.lineWidth = 6 - distance;
+                        context.moveTo(_array[i].getX(), _array[i].getY());
+                        context.lineTo(_array[i+1].getX(), _array[i+1].getY());
+                        context.stroke();
+                    }
+                }
+            }
+            return that;
+        };
+        </script>
+
+    
+    </head>
+    <body>
+        <canvas id="main_canvas" width="800" height="800"></canvas>
+    </body>
+</html>
